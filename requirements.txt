@@ -1,2 +1,9 @@
 requests
 PyPDF2
+nltk
+selenium
+beautifulsoup4
+pandas
+unidecode
+chardet
+requests
