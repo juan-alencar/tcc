@@ -13,8 +13,8 @@ def fazer_requisicao(processo_id):
     return response.json()
 
 def main():
-    total_linhas = sum(1 for linha in open('dataset/apenasIds/novo_dataset_processo.csv', 'r'))
-    with open('dataset/apenasIds/novo_dataset_processo.csv', 'r') as file:
+    total_linhas = sum(1 for linha in open('dataset/ids_processos.csv', 'r'))
+    with open('dataset/ids_processos.csv', 'r') as file:
         reader = csv.reader(file)
         processos_ids = [row[0] for row in reader]
 
