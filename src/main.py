@@ -27,39 +27,67 @@ def preprocess_text(text):
     return text
 
 def check_verdict(text):
-    
+
     # nltk.download('punkt')
 
-    positive_keywords = [
-        'julgo procedente', 'julgo parcialmente procedente', 'julgo parcialmente procedentes', 'deferida a tutela',
-        'concedo a antecipação', 'concedo a segurança', 'concedo o pedido',
-        'concedo a medida', 'acolho o pedido', 'declarar a nulidade', 'condenar o réu',
-        'procedente em parte', 'concedo parcialmente', 'decido pela procedência',
-        'acolher a ação', 'deferimento do pedido', 'satisfazer a demanda', 'aceito integralmente'
+    positive_regex = [
+        r"julg\w*\s+procedente\w*",
+        r"decid\w*\s+procedente\w*", 
+        r"pela\s+procedência", 
+        r"totalmente\s+procedente",
+        r"parcialmente\s+procedente",
+        r"acolho\s+o\s+pedido\s+cautelar"
+    ]
+    negative_regex = [
+        r"julg\w*\s+improcedente\w*",
+        r"decid\w*\s+improcedente\w*",  
+        r"pela\s+improcedência",       
+        r"rejeita-se\w*\s*o\s+pedido",       
+        r"(liminarmente|totalmente)\s+improcedente"  
     ]
 
-    negative_keywords = [
-        'julgo improcedente', 'rejeito a ação', 'rejeito o pedido',
-        'indeferimento do pedido', 'pedido improcedente', 'negar a segurança',
-        'negar provimento', 'desacolher a ação', 'indeferido o pedido',
-        'inadmito a ação', 'nega-se seguimento', 'extingo sem resolução',
-        'julgo totalmente improcedente', 'rejeito integralmente', 'extingo o processo',
-        'denego a segurança', 'não procede a demanda'
+    acordo_regex = r"homolog\w*"
+
+    extinct_regex = [
+        r"sem\s+.*?\s+d.*?\s+mérito", 
+        r"julg\w*\s+extinto",
+    ]
+
+    partial_regex = [
+        r"parcialmente\s+procedente", 
+        r"procedente\s+em\s+parte"
     ]
 
     sentences = sent_tokenize(text)
 
-    positive_matches = any(re.search(keyword, sentence) for sentence in sentences for keyword in positive_keywords)
-    negative_matches = any(re.search(keyword, sentence) for sentence in sentences for keyword in negative_keywords)
+    positive_matches = any(re.search(regex, sentence, re.IGNORECASE) for sentence in sentences for regex in positive_regex)
+    negative_matches = any(re.search(regex, sentence, re.IGNORECASE) for sentence in sentences for regex in negative_regex)
+    acordo_matches = any(re.search(acordo_regex, sentence, re.IGNORECASE) for sentence in sentences)
+    extinct_matches = any(re.search(regex, sentence, re.IGNORECASE) for sentence in sentences for regex in extinct_regex)
+    partial_matches = any(re.search(regex, sentence, re.IGNORECASE) for sentence in sentences for regex in partial_regex)
+
+    # matches = ""
+
+    # if positive_matches: matches += "Houve Ganho "
+    # if negative_matches: matches += "Houve Perdido "
+    # if acordo_matches: matches += "Houve Acordo "
+    # if extinct_matches: matches += "Houve Extinto "
+    # if partial_matches: matches += "Houve Ganho Parcial "
+
+    
 
     if positive_matches and not negative_matches:
         return "Ganho"
     elif negative_matches and not positive_matches:
         return "Perdido"
-    elif positive_matches and negative_matches:
-        return "Parcialmente Ganho"
+    elif acordo_matches and not positive_matches and not negative_matches:
+        return "Acordo"
+    elif partial_matches and not positive_matches and not negative_matches:
+        return "Parcialmente Procedente"
+    elif extinct_matches and not positive_matches and not negative_matches:
+        return "Extinto"
     else:
-        return "Indeterminado"
+        return "Outros"
 
 
 def getVeredicts(sentencas):    
@@ -87,8 +115,8 @@ def getPdfUrls(id):
     return {'first': vereditos[0], 'all': " | ".join(vereditos), 'total': len(vereditos)}
 
 def main():
-    total_linhas = sum(1 for linha in open('dataset/ids_processos.csv', 'r')) - 1 
-    with open('dataset/ids_processos.csv', 'r') as file:
+    total_linhas = sum(1 for linha in open('dataset/ids_processos_classe7.csv', 'r')) - 1 
+    with open('dataset/ids_processos_classe7.csv', 'r') as file:
         reader = csv.reader(file)
         processos_ids = [line.strip() for line in file if line.strip()]
 
@@ -97,7 +125,7 @@ def main():
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         future_to_id = {executor.submit(getPdfUrls, processo_id): processo_id for processo_id in processos_ids}
 
-        with open('resultados.csv', 'w', newline='') as csvfile:
+        with open('resultados_classe7_3.csv', 'w', newline='') as csvfile:
             fieldnames = ['Processo_ID', 'Primeiro Resultado', 'Todos os Resultados', 'Total Vereditos']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
@@ -113,7 +141,7 @@ def main():
                 except Exception as e:
                     print(e)
                     writer.writerow({'Processo_ID': processo_id, 'Primeiro Resultado': "Falha", 'Todos os Resultados': "", 'Total Vereditos': ''})
-                    time.sleep(5)
+                    time.sleep(60)
                     linhas_processadas += 1
                 
                 porcentagem = (linhas_processadas / total_linhas) * 100
@@ -122,4 +150,5 @@ def main():
             
 
 if __name__ == "__main__":
+    print(datetime.now())
     main()

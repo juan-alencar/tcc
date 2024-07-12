@@ -7,3 +7,9 @@ pandas
 unidecode
 chardet
 requests
+pandas
+scipy
+scikit-learn
+matplotlib
+seaborn
+statsmodels
